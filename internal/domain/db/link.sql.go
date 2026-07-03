@@ -37,19 +37,24 @@ func (q *Queries) CreateLink(ctx context.Context, arg CreateLinkParams) (CreateL
 	return i, err
 }
 
-const getLinkByCode = `-- name: GetLinkByCode :one
-SELECT id, short_code, long_url, clicks, created_at FROM links WHERE short_code = $1 LIMIT 1
+const getClicksByCode = `-- name: GetClicksByCode :one
+SELECT clicks FROM links WHERE short_code = $1 LIMIT 1
 `
 
-func (q *Queries) GetLinkByCode(ctx context.Context, shortCode string) (Link, error) {
-	row := q.db.QueryRow(ctx, getLinkByCode, shortCode)
-	var i Link
-	err := row.Scan(
-		&i.ID,
-		&i.ShortCode,
-		&i.LongUrl,
-		&i.Clicks,
-		&i.CreatedAt,
-	)
-	return i, err
+func (q *Queries) GetClicksByCode(ctx context.Context, shortCode string) (int32, error) {
+	row := q.db.QueryRow(ctx, getClicksByCode, shortCode)
+	var clicks int32
+	err := row.Scan(&clicks)
+	return clicks, err
+}
+
+const getURLAndIncrementLinkClicks = `-- name: GetURLAndIncrementLinkClicks :one
+UPDATE links SET clicks = clicks + 1 WHERE short_code = $1 RETURNING long_url
+`
+
+func (q *Queries) GetURLAndIncrementLinkClicks(ctx context.Context, shortCode string) (string, error) {
+	row := q.db.QueryRow(ctx, getURLAndIncrementLinkClicks, shortCode)
+	var long_url string
+	err := row.Scan(&long_url)
+	return long_url, err
 }

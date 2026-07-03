@@ -1,7 +1,5 @@
 package domain
 
-import "errors"
-
 type Link struct {
 	ID        int64  `json:"id"`
 	ShortCode string `json:"short_code"`
@@ -11,11 +9,11 @@ type Link struct {
 
 func (l *Link) Validate() error {
 	if l.LongUrl == "" {
-		return errors.New("url required")
+		return ErrNoURLProvided
 	}
 
 	if l.ShortCode == "" {
-		return errors.New("code required")
+		return ErrNoCodeProvided
 	}
 
 	return nil

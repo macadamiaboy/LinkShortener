@@ -5,3 +5,5 @@ CREATE TABLE links (
     clicks     INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_links_short_code ON links(short_code);
