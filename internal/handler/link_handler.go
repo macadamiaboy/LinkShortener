@@ -10,7 +10,7 @@ import (
 
 type LinkSaverGetter interface {
 	Save(ctx context.Context, url, code string) (*domain.Link, error)
-	GetURLAndIncrementLinkClicks(context.Context, string) (string, error)
+	GetURL(context.Context, string) (string, error)
 	GetClicks(context.Context, string) (int32, error)
 }
 
@@ -57,16 +57,14 @@ func (lh *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (lh *LinkHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var requestBody codeURL
-
-	err := json.NewDecoder(r.Body).Decode(&requestBody)
-	if err != nil {
-		lh.logger.Error("failed to decode the req body", "error", err.Error())
-		writeError(w, http.StatusBadRequest, "bad request")
+	shortCode := r.PathValue("code")
+	if shortCode == "" {
+		lh.logger.Error("args missing", "error", "no short code provided")
+		writeError(w, http.StatusBadRequest, "no short code provided")
 		return
 	}
 
-	url, err := lh.service.GetURLAndIncrementLinkClicks(ctx, requestBody.Code)
+	url, err := lh.service.GetURL(ctx, shortCode)
 	if err != nil {
 		lh.logger.Error("failed to save the link", "error", err.Error())
 		writeError(w, http.StatusBadRequest, "bad request")
@@ -80,16 +78,14 @@ func (lh *LinkHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 func (lh *LinkHandler) GetClicks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var requestBody codeURL
-
-	err := json.NewDecoder(r.Body).Decode(&requestBody)
-	if err != nil {
-		lh.logger.Error("failed to decode the req body", "error", err.Error())
-		writeError(w, http.StatusBadRequest, "bad request")
+	shortCode := r.PathValue("code")
+	if shortCode == "" {
+		lh.logger.Error("args missing", "error", "no short code provided")
+		writeError(w, http.StatusBadRequest, "no short code provided")
 		return
 	}
 
-	clicks, err := lh.service.GetClicks(ctx, requestBody.Code)
+	clicks, err := lh.service.GetClicks(ctx, shortCode)
 	if err != nil {
 		lh.logger.Error("failed to save the link", "error", err.Error())
 		writeError(w, http.StatusBadRequest, "bad request")
