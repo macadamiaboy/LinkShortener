@@ -16,7 +16,7 @@ type Config struct {
 }
 
 type DBConfig struct {
-	User     string `env:"NAME"`
+	User     string `env:"USER"`
 	Password string `env:"PWD"`
 	Host     string `env:"HOST" env-default:"localhost"`
 	Port     string `env:"PORT" env-default:"5432"`
@@ -46,7 +46,7 @@ func (sc ServerConfig) GetAddr() string {
 }
 
 func LoadConfig() *Config {
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load("../../.env"); err != nil {
 		log.Fatalf("failed to find the .env file: %s", err.Error())
 	}
 
