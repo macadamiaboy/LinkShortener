@@ -34,26 +34,40 @@ func (repo *PGXURLRepository) SaveLink(ctx context.Context, params db.CreateLink
 	return link, nil
 }
 
-func (repo *PGXURLRepository) GetURLAndIncrementLinkClicks(ctx context.Context, code string) (string, error) {
-	url, err := repo.q.GetURLAndIncrementLinkClicks(ctx, code)
+func (repo *PGXURLRepository) GetURLAndClicks(ctx context.Context, code string) (string, int32, error) {
+	urlNClicks, err := repo.q.GetURLAndClicksByCode(ctx, code)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", domain.ErrLinkNotFound
+			return "", 0, domain.ErrLinkNotFound
 		}
-		return "", fmt.Errorf("failed to get the link: %w", err)
+		return "", 0, fmt.Errorf("failed to get the link: %w", err)
 	}
 
-	return url, nil
+	return urlNClicks.LongUrl, urlNClicks.Clicks, nil
 }
 
-func (repo *PGXURLRepository) GetClicks(ctx context.Context, code string) (int32, error) {
-	clicks, err := repo.q.GetClicksByCode(ctx, code)
+func (repo *PGXURLRepository) UpdateClicks(ctx context.Context, clicks int32, code string) error {
+	updParams := db.UpdateClicksParams{ShortCode: code, Clicks: clicks}
+
+	err := repo.q.UpdateClicks(ctx, updParams)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, domain.ErrLinkNotFound
+			return domain.ErrLinkNotFound
 		}
-		return 0, fmt.Errorf("failed to get clicks: %w", err)
+		return fmt.Errorf("failed to update clicks: %w", err)
 	}
 
-	return clicks, nil
+	return nil
+}
+
+func (repo *PGXURLRepository) IncrementClicks(ctx context.Context, code string) error {
+	err := repo.q.IncrementClicks(ctx, code)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrLinkNotFound
+		}
+		return fmt.Errorf("failed to increment clicks: %w", err)
+	}
+
+	return nil
 }

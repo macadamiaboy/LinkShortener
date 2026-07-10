@@ -13,6 +13,7 @@ import (
 	"pht/pet/link_shortener/internal/service"
 	"pht/pet/link_shortener/pkg/cache"
 	"pht/pet/link_shortener/pkg/config"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -31,6 +32,8 @@ func main() {
 
 	notifyCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	var wg sync.WaitGroup
 
 	pool, err := database.InitDB(ctx, logger, cfg.DB)
 	if err != nil {
@@ -52,6 +55,8 @@ func main() {
 	linkRepo := repository.NewPGXURLRepository(queries)
 	linkService := service.NewLinkService(linkRepo, redis.Client, logger)
 	linkHandler := handler.NewLinkHandler(linkService, logger)
+
+	linkService.StartClickSyncWorker(notifyCtx, 60*time.Second, &wg)
 
 	mux.Handle(
 		"POST /shorten",
@@ -88,6 +93,8 @@ func main() {
 	for err := range errCh {
 		logger.Error("error captured during the shutdown", "error", err)
 	}
+
+	wg.Wait()
 
 	logger.Info("server stopped")
 }

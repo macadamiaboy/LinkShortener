@@ -37,24 +37,41 @@ func (q *Queries) CreateLink(ctx context.Context, arg CreateLinkParams) (CreateL
 	return i, err
 }
 
-const getClicksByCode = `-- name: GetClicksByCode :one
-SELECT clicks FROM links WHERE short_code = $1 LIMIT 1
+const getURLAndClicksByCode = `-- name: GetURLAndClicksByCode :one
+SELECT long_url, clicks FROM links WHERE short_code = $1 LIMIT 1
 `
 
-func (q *Queries) GetClicksByCode(ctx context.Context, shortCode string) (int32, error) {
-	row := q.db.QueryRow(ctx, getClicksByCode, shortCode)
-	var clicks int32
-	err := row.Scan(&clicks)
-	return clicks, err
+type GetURLAndClicksByCodeRow struct {
+	LongUrl string `json:"long_url"`
+	Clicks  int32  `json:"clicks"`
 }
 
-const getURLAndIncrementLinkClicks = `-- name: GetURLAndIncrementLinkClicks :one
-UPDATE links SET clicks = clicks + 1 WHERE short_code = $1 RETURNING long_url
+func (q *Queries) GetURLAndClicksByCode(ctx context.Context, shortCode string) (GetURLAndClicksByCodeRow, error) {
+	row := q.db.QueryRow(ctx, getURLAndClicksByCode, shortCode)
+	var i GetURLAndClicksByCodeRow
+	err := row.Scan(&i.LongUrl, &i.Clicks)
+	return i, err
+}
+
+const incrementClicks = `-- name: IncrementClicks :exec
+UPDATE links SET clicks = clicks + 1 WHERE short_code = $1
 `
 
-func (q *Queries) GetURLAndIncrementLinkClicks(ctx context.Context, shortCode string) (string, error) {
-	row := q.db.QueryRow(ctx, getURLAndIncrementLinkClicks, shortCode)
-	var long_url string
-	err := row.Scan(&long_url)
-	return long_url, err
+func (q *Queries) IncrementClicks(ctx context.Context, shortCode string) error {
+	_, err := q.db.Exec(ctx, incrementClicks, shortCode)
+	return err
+}
+
+const updateClicks = `-- name: UpdateClicks :exec
+UPDATE links SET clicks = clicks + $2 WHERE short_code = $1
+`
+
+type UpdateClicksParams struct {
+	ShortCode string `json:"short_code"`
+	Clicks    int32  `json:"clicks"`
+}
+
+func (q *Queries) UpdateClicks(ctx context.Context, arg UpdateClicksParams) error {
+	_, err := q.db.Exec(ctx, updateClicks, arg.ShortCode, arg.Clicks)
+	return err
 }
