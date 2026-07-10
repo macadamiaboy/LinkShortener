@@ -10,9 +10,10 @@ import (
 )
 
 type Config struct {
-	Env string       `env:"ENV" env-default:"dev"`
-	DB  DBConfig     `env-prefix:"DB_"`
-	Srv ServerConfig `env-prefix:"SRV_"`
+	Env   string       `env:"ENV" env-default:"dev"`
+	DB    DBConfig     `env-prefix:"DB_"`
+	Srv   ServerConfig `env-prefix:"SRV_"`
+	Redis RedisConfig  `env-prefix:"REDIS_"`
 }
 
 type DBConfig struct {
@@ -39,6 +40,13 @@ type ServerConfig struct {
 	ReadTimeout  time.Duration `env:"READ_TIMEOUT" env-default:"5s"`
 	WriteTimeout time.Duration `env:"WRITE_TIMEOUT" env-default:"10s"`
 	IdleTimeout  time.Duration `env:"IDLE_TIMEOUT" env-default:"60s"`
+}
+
+type RedisConfig struct {
+	Password string `env:"PWD"`
+	Host     string `env:"HOST" env-default:"localhost"`
+	Port     string `env:"PORT" env-default:"6379"`
+	DB       int    `env:"DB" env-default:"0"`
 }
 
 func (sc ServerConfig) GetAddr() string {

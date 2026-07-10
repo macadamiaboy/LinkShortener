@@ -11,6 +11,7 @@ import (
 	"pht/pet/link_shortener/internal/handler"
 	"pht/pet/link_shortener/internal/repository"
 	"pht/pet/link_shortener/internal/service"
+	"pht/pet/link_shortener/pkg/cache"
 	"pht/pet/link_shortener/pkg/config"
 	"syscall"
 	"time"
@@ -38,11 +39,18 @@ func main() {
 	}
 	defer pool.Close()
 
+	redis, err := cache.NewRedisClient(cfg.Redis, logger)
+	if err != nil {
+		logger.Error("redis init failed", "error", err)
+		return
+	}
+	defer redis.Close()
+
 	mux := http.NewServeMux()
 
 	queries := db.New(pool)
 	linkRepo := repository.NewPGXURLRepository(queries)
-	linkService := service.NewLinkService(linkRepo)
+	linkService := service.NewLinkService(linkRepo, redis.Client, logger)
 	linkHandler := handler.NewLinkHandler(linkService, logger)
 
 	mux.Handle(

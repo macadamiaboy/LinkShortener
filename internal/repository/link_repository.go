@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"pht/pet/link_shortener/internal/domain"
 	"pht/pet/link_shortener/internal/domain/db"
 
@@ -26,7 +27,7 @@ func (repo *PGXURLRepository) SaveLink(ctx context.Context, params db.CreateLink
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			return nil, domain.ErrCodeUniquenessConflict
 		}
-		return nil, domain.ErrInternal
+		return nil, fmt.Errorf("failed to save the link: %w", err)
 	}
 
 	link := &domain.Link{ID: linkRow.ID, ShortCode: linkRow.ShortCode, LongUrl: linkRow.LongUrl, Clicks: linkRow.Clicks}
@@ -39,7 +40,7 @@ func (repo *PGXURLRepository) GetURLAndIncrementLinkClicks(ctx context.Context, 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", domain.ErrLinkNotFound
 		}
-		return "", domain.ErrInternal
+		return "", fmt.Errorf("failed to get the link: %w", err)
 	}
 
 	return url, nil
@@ -51,7 +52,7 @@ func (repo *PGXURLRepository) GetClicks(ctx context.Context, code string) (int32
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, domain.ErrLinkNotFound
 		}
-		return 0, domain.ErrInternal
+		return 0, fmt.Errorf("failed to get clicks: %w", err)
 	}
 
 	return clicks, nil
