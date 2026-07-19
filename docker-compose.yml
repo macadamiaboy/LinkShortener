@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # app: Go
+  link-shortener:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PWD=password
+      - DB_NAME=link_shortener_db
+      - SRV_HOST=0.0.0.0
+      - SRV_PORT=8080
+      - SRV_READ_TIMEOUT=5s
+      - SRV_WRITE_TIMEOUT=10s
+      - SRV_IDLE_TIMEOUT=60s
+      - REDIS_HOST=redis-cache
+      - REDIS_PORT=6379
+      - REDIS_PWD=password
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+
+  # DB: PostgreSQL
+  postgres-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=link_shortener_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d link_shortener_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # cache: Redis
+  redis-cache:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
