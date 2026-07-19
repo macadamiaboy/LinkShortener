@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+//var migrationFiles embed.FS
+
 func InitDB(baseCtx context.Context, logger *slog.Logger, DBConfig config.DBConfig) (*pgxpool.Pool, error) {
 	url := DBConfig.GetDSN()
 
@@ -29,3 +31,22 @@ func InitDB(baseCtx context.Context, logger *slog.Logger, DBConfig config.DBConf
 
 	return pool, nil
 }
+
+/*
+func RunMigrations(pool *pgxpool.Pool, logger *slog.Logger) error {
+
+	sourceDriver, err := iofs.New(migrationFiles, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to create the driver of migrations source: %w", err)
+	}
+
+	conn, err := pool.Acquire(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get the connection out of the pool: %w", err)
+	}
+
+	dbDriver, err := pgx.WithInstance(conn.Conn(), &pgx.Config{})
+
+	return nil
+}
+*/

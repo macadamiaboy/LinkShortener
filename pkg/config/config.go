@@ -54,8 +54,9 @@ func (sc ServerConfig) GetAddr() string {
 }
 
 func LoadConfig() *Config {
-	if err := godotenv.Load("../../.env"); err != nil {
-		log.Fatalf("failed to find the .env file: %s", err.Error())
+	if err := godotenv.Load(); err != nil {
+		_ = godotenv.Load("../../.env")
+		log.Println("failed to find the .env file, data will be read from OS")
 	}
 
 	var cfg Config
