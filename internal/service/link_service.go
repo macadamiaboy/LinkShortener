@@ -48,14 +48,7 @@ func (ls *LinkService) Save(ctx context.Context, url, code string) (*domain.Link
 		return nil, fmt.Errorf("failed to create the short link for url, err: %w", err)
 	}
 
-	link := &domain.Link{
-		ID:        savedLink.ID,
-		ShortCode: savedLink.ShortCode,
-		LongUrl:   savedLink.LongUrl,
-		Clicks:    savedLink.Clicks,
-	}
-
-	return link, nil
+	return savedLink, nil
 }
 
 func (ls *LinkService) GetURL(ctx context.Context, code string) (string, error) {
@@ -166,6 +159,7 @@ func (ls *LinkService) syncClicks(ctx context.Context) {
 
 			clicksStr, err := ls.redis.GetDel(ctx, key).Result()
 			if errors.Is(err, redis.Nil) {
+				ls.logger.Info("no data for redis key", "key", key)
 				continue
 			} else if err != nil {
 				ls.logger.Warn("failed to GetDel redis key", "key", key, "error", err)
@@ -179,6 +173,7 @@ func (ls *LinkService) syncClicks(ctx context.Context) {
 			}
 
 			if clicks == 0 {
+				ls.logger.Info("zero clicks for redis key", "key", key)
 				continue
 			}
 

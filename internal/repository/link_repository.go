@@ -51,9 +51,6 @@ func (repo *PGXURLRepository) UpdateClicks(ctx context.Context, clicks int32, co
 
 	err := repo.q.UpdateClicks(ctx, updParams)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.ErrLinkNotFound
-		}
 		return fmt.Errorf("failed to update clicks: %w", err)
 	}
 
@@ -63,9 +60,6 @@ func (repo *PGXURLRepository) UpdateClicks(ctx context.Context, clicks int32, co
 func (repo *PGXURLRepository) IncrementClicks(ctx context.Context, code string) error {
 	err := repo.q.IncrementClicks(ctx, code)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.ErrLinkNotFound
-		}
 		return fmt.Errorf("failed to increment clicks: %w", err)
 	}
 
