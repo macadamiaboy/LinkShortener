@@ -66,13 +66,13 @@ func (lh *LinkHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := lh.service.GetURL(ctx, shortCode)
 	if err != nil {
-		lh.logger.Error("failed to save the link", "error", err.Error())
+		lh.logger.Error("failed to get the link", "error", err.Error())
 		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 
 	resp := codeURL{URL: url}
-	writeJSON(w, http.StatusCreated, resp)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (lh *LinkHandler) GetClicks(w http.ResponseWriter, r *http.Request) {
@@ -93,5 +93,5 @@ func (lh *LinkHandler) GetClicks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := clicksResponse{Clicks: clicks}
-	writeJSON(w, http.StatusCreated, resp)
+	writeJSON(w, http.StatusOK, resp)
 }

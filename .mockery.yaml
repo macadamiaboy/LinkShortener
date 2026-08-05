@@ -11,3 +11,9 @@ packages:
       outpkg: mocks
     interfaces:
       URLRepository:
+  pht/pet/link_shortener/internal/handler:
+    config:
+      dir: internal/mocks
+      outpkg: mocks
+    interfaces:
+      LinkSaverGetter:
