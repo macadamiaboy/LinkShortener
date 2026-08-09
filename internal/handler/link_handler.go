@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"pht/pet/link_shortener/internal/domain"
@@ -46,8 +47,13 @@ func (lh *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	link, err := lh.service.Save(ctx, requestBody.URL, requestBody.Code)
 	if err != nil {
+		if errors.Is(err, domain.ErrNoCodeProvided) || errors.Is(err, domain.ErrNoURLProvided) {
+			lh.logger.Error("bad request", "error", err.Error())
+			writeError(w, http.StatusBadRequest, "bad request")
+			return
+		}
 		lh.logger.Error("failed to save the link", "error", err.Error())
-		writeError(w, http.StatusBadRequest, "bad request")
+		writeError(w, http.StatusInternalServerError, "server error")
 		return
 	}
 
@@ -58,37 +64,36 @@ func (lh *LinkHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	shortCode := r.PathValue("code")
-	if shortCode == "" {
-		lh.logger.Error("args missing", "error", "no short code provided")
-		writeError(w, http.StatusBadRequest, "no short code provided")
-		return
-	}
 
 	url, err := lh.service.GetURL(ctx, shortCode)
 	if err != nil {
+		if errors.Is(err, domain.ErrLinkNotFound) {
+			lh.logger.Error("link not found", "error", err.Error(), "short code", shortCode)
+			writeError(w, http.StatusNotFound, "not found")
+			return
+		}
 		lh.logger.Error("failed to get the link", "error", err.Error())
-		writeError(w, http.StatusBadRequest, "bad request")
+		writeError(w, http.StatusInternalServerError, "server error")
 		return
 	}
 
-	resp := codeURL{URL: url}
-	writeJSON(w, http.StatusOK, resp)
+	http.Redirect(w, r, url, http.StatusFound)
 }
 
 func (lh *LinkHandler) GetClicks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	shortCode := r.PathValue("code")
-	if shortCode == "" {
-		lh.logger.Error("args missing", "error", "no short code provided")
-		writeError(w, http.StatusBadRequest, "no short code provided")
-		return
-	}
 
 	clicks, err := lh.service.GetClicks(ctx, shortCode)
 	if err != nil {
-		lh.logger.Error("failed to save the link", "error", err.Error())
-		writeError(w, http.StatusBadRequest, "bad request")
+		if errors.Is(err, domain.ErrLinkNotFound) {
+			lh.logger.Error("link not found", "error", err.Error(), "short code", shortCode)
+			writeError(w, http.StatusNotFound, "not found")
+			return
+		}
+		lh.logger.Error("failed to get clicks", "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "server error")
 		return
 	}
 

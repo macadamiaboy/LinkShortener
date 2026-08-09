@@ -23,11 +23,17 @@ type codeURL struct {
 }
 
 func Test_E2E_CreateAndGetLink(t *testing.T) {
-	linkPayload := codeURL{Code: "test", URL: "https://test.com"}
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	linkPayload := codeURL{Code: "test1", URL: "https://test1.com"}
 	body, err := json.Marshal(linkPayload)
 	require.NoError(t, err, "failed to marshall link payload")
 
-	createRes, err := http.Post(appURL+"/shorten", "application/json", bytes.NewBuffer(body))
+	createRes, err := client.Post(appURL+"/shorten", "application/json", bytes.NewBuffer(body))
 	require.NoError(t, err, "failed to send POST request")
 	defer createRes.Body.Close()
 
@@ -38,42 +44,59 @@ func Test_E2E_CreateAndGetLink(t *testing.T) {
 	require.NoError(t, err, "failed to decode POST response")
 	linkCode := createdLink.ShortCode
 
-	getRes, err := http.Get(appURL + "/" + linkCode)
+	getRes, err := client.Get(appURL + "/" + linkCode)
 	require.NoError(t, err, "failed to send GET request")
 	defer getRes.Body.Close()
 
-	require.Equal(t, http.StatusOK, getRes.StatusCode)
+	require.Equal(t, http.StatusFound, getRes.StatusCode)
 
-	var result codeURL
-	err = json.NewDecoder(getRes.Body).Decode(&result)
-	require.NoError(t, err, "failed to decode GET response")
-	assert.Equal(t, linkPayload.URL, result.URL)
+	location := getRes.Header.Get("Location")
+	assert.Equal(t, linkPayload.URL, location)
 }
 
 func Test_E2E_GetLinkAndClicks(t *testing.T) {
-	linkCode := "test"
-	linkURL := "https://test.com"
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 
-	getRes, err := http.Get(appURL + "/" + linkCode)
+	linkPayload := codeURL{Code: "test2", URL: "https://test2.com"}
+	body, err := json.Marshal(linkPayload)
+	require.NoError(t, err, "failed to marshall link payload")
+
+	createRes, err := client.Post(appURL+"/shorten", "application/json", bytes.NewBuffer(body))
+	require.NoError(t, err, "failed to send POST request")
+	defer createRes.Body.Close()
+	require.Equal(t, http.StatusCreated, createRes.StatusCode)
+
+	getRes, err := client.Get(appURL + "/" + linkPayload.Code)
 	require.NoError(t, err, "failed to send GET request")
 	defer getRes.Body.Close()
+	require.Equal(t, http.StatusFound, getRes.StatusCode)
 
-	require.Equal(t, http.StatusOK, getRes.StatusCode)
-
-	var result codeURL
-	err = json.NewDecoder(getRes.Body).Decode(&result)
-	require.NoError(t, err, "failed to decode GET response")
-	require.Equal(t, linkURL, result.URL)
-
-	getClicksRes, err := http.Get(appURL + "/stats/" + linkCode)
+	getClicksRes, err := client.Get(appURL + "/stats/" + linkPayload.Code)
 	require.NoError(t, err, "failed to send GET request")
 	defer getClicksRes.Body.Close()
-
-	require.Equal(t, http.StatusOK, getRes.StatusCode)
+	require.Equal(t, http.StatusOK, getClicksRes.StatusCode)
 
 	var resultClicks struct {
 		Clicks int32 `json:"clicks"`
 	}
+	err = json.NewDecoder(getClicksRes.Body).Decode(&resultClicks)
+	require.NoError(t, err, "failed to decode GET response")
+	assert.Equal(t, int32(1), resultClicks.Clicks)
+
+	getRes, err = client.Get(appURL + "/" + linkPayload.Code)
+	require.NoError(t, err, "failed to send GET request")
+	defer getRes.Body.Close()
+	require.Equal(t, http.StatusFound, getRes.StatusCode)
+
+	getClicksRes, err = client.Get(appURL + "/stats/" + linkPayload.Code)
+	require.NoError(t, err, "failed to send GET request")
+	defer getClicksRes.Body.Close()
+	require.Equal(t, http.StatusOK, getClicksRes.StatusCode)
+
 	err = json.NewDecoder(getClicksRes.Body).Decode(&resultClicks)
 	require.NoError(t, err, "failed to decode GET response")
 	assert.Equal(t, int32(2), resultClicks.Clicks)

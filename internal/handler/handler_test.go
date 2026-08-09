@@ -49,9 +49,25 @@ func TestLinkHandler_Create(t *testing.T) {
 			willingResponse: response{status: http.StatusBadRequest, body: apiError{Error: "bad request"}},
 		},
 		{
+			name:            "no url provided",
+			args:            codeURL{Code: "test"},
+			willingResponse: response{status: http.StatusBadRequest, body: apiError{Error: "bad request"}},
+			mockSetup: func(ctx context.Context, m *mocks.MockLinkSaverGetter) {
+				m.EXPECT().Save(ctx, mock.Anything, mock.Anything).Return(nil, domain.ErrNoURLProvided)
+			},
+		},
+		{
+			name:            "no code provided",
+			args:            codeURL{URL: "https://test.com"},
+			willingResponse: response{status: http.StatusBadRequest, body: apiError{Error: "bad request"}},
+			mockSetup: func(ctx context.Context, m *mocks.MockLinkSaverGetter) {
+				m.EXPECT().Save(ctx, mock.Anything, mock.Anything).Return(nil, domain.ErrNoCodeProvided)
+			},
+		},
+		{
 			name:            "save method fail",
 			args:            codeURL{Code: "test", URL: "https://test.com"},
-			willingResponse: response{status: http.StatusBadRequest, body: apiError{Error: "bad request"}},
+			willingResponse: response{status: http.StatusInternalServerError, body: apiError{Error: "server error"}},
 			mockSetup: func(ctx context.Context, m *mocks.MockLinkSaverGetter) {
 				m.EXPECT().Save(ctx, mock.Anything, mock.Anything).Return(nil, errUnknown)
 			},
@@ -103,13 +119,15 @@ func TestLinkHandler_GetURL(t *testing.T) {
 	cases := []struct {
 		name            string
 		path            string
+		url             string
 		willingResponse response
 		mockSetup       mockSetupFunc
 	}{
 		{
 			name:            "successful",
 			path:            "/test",
-			willingResponse: response{status: http.StatusOK, body: codeURL{URL: "https://test.com"}},
+			url:             "https://test.com",
+			willingResponse: response{status: http.StatusFound},
 			mockSetup: func(ctx context.Context, m *mocks.MockLinkSaverGetter) {
 				m.EXPECT().GetURL(ctx, "test").Return("https://test.com", nil)
 			},
@@ -119,11 +137,18 @@ func TestLinkHandler_GetURL(t *testing.T) {
 			path:            "/",
 			willingResponse: response{status: http.StatusNotFound},
 		},
-
+		{
+			name:            "link not found, 404",
+			path:            "/test",
+			willingResponse: response{status: http.StatusNotFound, body: apiError{Error: "not found"}},
+			mockSetup: func(ctx context.Context, m *mocks.MockLinkSaverGetter) {
+				m.EXPECT().GetURL(ctx, mock.Anything).Return("", domain.ErrLinkNotFound)
+			},
+		},
 		{
 			name:            "get method fail",
 			path:            "/test",
-			willingResponse: response{status: http.StatusBadRequest, body: apiError{Error: "bad request"}},
+			willingResponse: response{status: http.StatusInternalServerError, body: apiError{Error: "server error"}},
 			mockSetup: func(ctx context.Context, m *mocks.MockLinkSaverGetter) {
 				m.EXPECT().GetURL(ctx, mock.Anything).Return("", errUnknown)
 			},
@@ -149,6 +174,10 @@ func TestLinkHandler_GetURL(t *testing.T) {
 			mux.ServeHTTP(w, req)
 
 			assert.Equal(t, tc.willingResponse.status, w.Code)
+
+			if tc.url != "" {
+				assert.Equal(t, tc.url, w.Header().Get("Location"))
+			}
 
 			if tc.willingResponse.body != nil {
 				expJSON, err := json.Marshal(tc.willingResponse.body)
@@ -182,11 +211,18 @@ func TestLinkHandler_GetClicks(t *testing.T) {
 			path:            "/stats/",
 			willingResponse: response{status: http.StatusNotFound},
 		},
-
+		{
+			name:            "link not found, 404",
+			path:            "/stats/test",
+			willingResponse: response{status: http.StatusNotFound, body: apiError{Error: "not found"}},
+			mockSetup: func(ctx context.Context, m *mocks.MockLinkSaverGetter) {
+				m.EXPECT().GetClicks(ctx, mock.Anything).Return(0, domain.ErrLinkNotFound)
+			},
+		},
 		{
 			name:            "get method fail",
 			path:            "/stats/test",
-			willingResponse: response{status: http.StatusBadRequest, body: apiError{Error: "bad request"}},
+			willingResponse: response{status: http.StatusInternalServerError, body: apiError{Error: "server error"}},
 			mockSetup: func(ctx context.Context, m *mocks.MockLinkSaverGetter) {
 				m.EXPECT().GetClicks(ctx, mock.Anything).Return(0, errUnknown)
 			},

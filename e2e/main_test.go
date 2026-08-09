@@ -11,15 +11,12 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
-
-var pool *pgxpool.Pool
 
 var appURL string
 
@@ -119,7 +116,13 @@ func runTests(m *testing.M) int {
 	defer appContainer.Terminate(ctx)
 
 	host, err := appContainer.Host(ctx)
+	if err != nil {
+		panic(err)
+	}
 	port, err := appContainer.MappedPort(ctx, "8080")
+	if err != nil {
+		panic(err)
+	}
 
 	appURL = fmt.Sprintf("http://%s:%s", host, port.Port())
 
